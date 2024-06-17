@@ -1,0 +1,80 @@
+name: OpenWrt Compile
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 2 * * 0'
+
+env:
+  REPO_URL: https://github.com/istoreos/istoreos
+  REPO_BRANCH: master
+  CONFIG_FILE: config/x86_64
+  UPLOAD_FIRMWARE: true
+  UPLOAD_RELEASE: false
+  CACHEWRTBUILD_SWITCH: true
+  UPDATE_FIRMWARE_ONLINE: true
+  COMPILATION_INFORMATION: true
+  RETAIN_MINUTE: 10080
+  KEEP_LATEST: 10
+  WAREHOUSE_MAN: OpenWrt-Compile
+  LUCI_EDITION: 23.05
+  SOURCE_OWNER: istoreos
+  DIY_WORK: x86_64-build
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Initialize Environment
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install $(curl -fsSL https://is.gd/depend_packages)
+        
+    - name: Clone OpenWrt repository
+      run: git clone --depth 1 ${{ env.REPO_URL }} openwrt
+      
+    - name: Load Custom Settings
+      run: |
+        cd openwrt
+        . ../config/settings.sh
+        
+    - name: Diy Part1
+      run: |
+        cd openwrt
+        . ../config/diy-part1.sh
+        
+    - name: Diy Part2  
+      run: |
+        cd openwrt
+        . ../config/diy-part2.sh
+        
+    - name: Compile Firmware
+      id: compile
+      run: |
+        cd openwrt
+        . ../config/common.sh && Diy_menu4
+        
+    - name: Upload Firmware
+      uses: actions/upload-artifact@main
+      if: steps.compile.outputs.status == 'success'
+      with:
+        name: OpenWrt
+        path: openwrt/bin/targets/*/*/*.img*
+        
+    - name: Create Release
+      uses: ncipollo/release-action@v1
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
+      with:
+        artifacts: openwrt/bin/targets/*/*/*.img*
+        token: ${{ secrets.GITHUB_TOKEN }}
