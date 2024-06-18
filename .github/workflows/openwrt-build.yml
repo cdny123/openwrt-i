@@ -64,7 +64,11 @@ jobs:
       run: |
         cd openwrt
         . ../config/common.sh && Diy_menu4
-        
+
+    - name: Set Firmware Update URL
+  run: |
+    echo "FIRMWARE_UPDATE_URL=https://github.com/cdny123/openwrt-i/releases/latest/download/openwrt.tar.gz" >> $GITHUB_OUTPUT
+    
     - name: Upload Firmware
       uses: actions/upload-artifact@main
       if: steps.compile.outputs.status == 'success'
