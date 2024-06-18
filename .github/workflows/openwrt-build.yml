@@ -48,7 +48,12 @@ jobs:
       run: |
         cd openwrt
         . ../config/settings.sh
-        
+
+    - name: Create feeds.conf.default
+      run: |
+        cd openwrt
+        cp feeds.conf.default.example feeds.conf.default
+    
     - name: Diy Part1
       run: |
         cd openwrt
